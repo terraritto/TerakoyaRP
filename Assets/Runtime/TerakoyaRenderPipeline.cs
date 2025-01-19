@@ -1,10 +1,21 @@
 using System.Collections.Generic;
+using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 public class TerakoyaRenderPipeline : RenderPipeline
 {
     CameraRenderer renderer = new CameraRenderer();
+
+    bool useDynamicBatching, useGPUInstancing;
+
+    public TerakoyaRenderPipeline(
+        bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher)
+    {
+        this.useDynamicBatching = useDynamicBatching;
+        this.useGPUInstancing = useGPUInstancing;
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+    }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
@@ -14,7 +25,7 @@ public class TerakoyaRenderPipeline : RenderPipeline
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            renderer.Render(context, cameras[i]);
+            renderer.Render(context, cameras[i], useDynamicBatching, useGPUInstancing);
         }        
     }
 }

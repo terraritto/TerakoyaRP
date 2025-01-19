@@ -1,5 +1,5 @@
-﻿#ifndef TERAKOYA_UNLIT_PASS_INCLUDED
-#define TERAKOYA_UNLIT_PASS_INCLUDED
+#ifndef TERAKOYA_LIT_PASS_INCLUDED
+#define TERAKOYA_LIT_PASS_INCLUDED
 
 #include "../ShaderLibrary/Common.hlsl"
 
@@ -33,7 +33,7 @@ struct Varyings
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
-Varyings UnlitPassVertex(Attributes input)
+Varyings LitPassVertex(Attributes input)
 {
 	Varyings output;
 	UNITY_SETUP_INSTANCE_ID(input);
@@ -45,7 +45,7 @@ Varyings UnlitPassVertex(Attributes input)
 	return output;
 }
 
-float4 UnlitPassFragment(Varyings input) : SV_TARGET
+float4 LitPassFragment(Varyings input) : SV_TARGET
 {
 	UNITY_SETUP_INSTANCE_ID(input);
 	float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
