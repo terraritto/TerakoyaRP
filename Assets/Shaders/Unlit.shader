@@ -27,4 +27,6 @@ Shader "Terakoya RP/Unlit"
             ENDHLSL
         }
     }
+    
+    CustomEditor "CustomShaderGUI"
 }
