@@ -19,6 +19,9 @@ public partial class CameraRenderer
     static ShaderTagId unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit");
     static ShaderTagId litShaderTagId = new ShaderTagId("CustomLit");
 
+    // Light
+    Lighting lighting = new Lighting();
+
     // Camera毎のRenderingを定義する
     public void Render(ScriptableRenderContext context, Camera camera,
         bool useDynamicBatching, bool useGPUInstancing)
@@ -41,6 +44,9 @@ public partial class CameraRenderer
 
         // 描画前の設定
         Setup();
+
+        // ライトの更新
+        lighting.Setup(context, cullingResults);
 
         // 描画
         DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);

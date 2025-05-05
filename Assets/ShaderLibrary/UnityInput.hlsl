@@ -15,4 +15,7 @@ float4x4 unity_prev_MatrixM;
 float4x4 unity_prev_MatrixIM;
 float4x4 glstate_matrix_projection;
 
+// カメラの位置
+float3 _WorldSpaceCameraPos;
+
 #endif

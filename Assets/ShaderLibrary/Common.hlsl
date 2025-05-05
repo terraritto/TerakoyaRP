@@ -1,7 +1,13 @@
 #ifndef TERAKOYA_CUSTOM_COMMON_INCLUDED
 #define TERAKOYA_CUSTOM_COMMON_INCLUDED
 
+float Square(float v)
+{
+    return v * v;
+}
+
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "UnityInput.hlsl"
 
 #define UNITY_MATRIX_M unity_ObjectToWorld
