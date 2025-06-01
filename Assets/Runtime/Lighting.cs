@@ -24,15 +24,27 @@ public class Lighting
     static Vector4[] directionalLightColors = new Vector4[MaxDirectionalLight];
     static Vector4[] directionalLightDirections = new Vector4[MaxDirectionalLight];
 
-    public void Setup(ScriptableRenderContext context, CullingResults cullingResults)
+    Shadows shadows = new Shadows();
+
+    public void Setup(
+        ScriptableRenderContext context,
+        CullingResults cullingResults,
+        ShadowSettings shadowSettings)
     {
         this.cullingResults = cullingResults;
 
         buffer.BeginSample(bufferName);
+        shadows.Setup(context, cullingResults, shadowSettings);
         SetupLights();
+        shadows.Render();
         buffer.EndSample(bufferName);
         context.ExecuteCommandBuffer(buffer);
         buffer.Clear();
+    }
+
+    public void Cleanup()
+    {
+        shadows.Cleanup();
     }
 
     void SetupLights()
@@ -66,5 +78,6 @@ public class Lighting
     {
         directionalLightColors[index] = visibleLight.finalColor;
         directionalLightDirections[index] = -visibleLight.localToWorldMatrix.GetColumn(2);
+        shadows.ReserveDirectionalShadows(visibleLight.light, index);
     }
 }

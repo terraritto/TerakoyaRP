@@ -23,8 +23,12 @@ public partial class CameraRenderer
     Lighting lighting = new Lighting();
 
     // Camera毎のRenderingを定義する
-    public void Render(ScriptableRenderContext context, Camera camera,
-        bool useDynamicBatching, bool useGPUInstancing)
+    public void Render(
+        ScriptableRenderContext context,
+        Camera camera,
+        bool useDynamicBatching,
+        bool useGPUInstancing,
+        ShadowSettings shadowSettings)
     {
         // contextとcameraを保持
         this.context = context;
@@ -37,16 +41,19 @@ public partial class CameraRenderer
         PrepareForSceneWindow();
 
         // カリングの処理
-        if (!Cull())
+        if (!Cull(shadowSettings.maxDistance))
         {
             return;
         }
 
+        // ライトの更新
+        buffer.BeginSample(SampleName);
+        ExecuteBuffer();
+        lighting.Setup(context, cullingResults, shadowSettings);
+        buffer.EndSample(SampleName);
+
         // 描画前の設定
         Setup();
-
-        // ライトの更新
-        lighting.Setup(context, cullingResults);
 
         // 描画
         DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
@@ -57,16 +64,20 @@ public partial class CameraRenderer
         // ギズモの描画
         DrawGizmos();
 
+        // データの後始末
+        lighting.Cleanup();
+
         // コマンドの発行
         Submit();
     }
 
-    bool Cull()
+    bool Cull(float maxShadowDistance)
     {
         // カメラからカリングパラメータが取れた時だけ通す
         if (this.camera.TryGetCullingParameters(out ScriptableCullingParameters cullingParameters))
         {
             // 結果を保持しておく
+            cullingParameters.shadowDistance = Mathf.Min(maxShadowDistance, camera.farClipPlane);
             this.cullingResults = this.context.Cull(ref cullingParameters);
             return true;
         }
