@@ -31,7 +31,7 @@ Varyings ShadowCasterPassVertex(Attributes input)
 	Varyings output;
 	UNITY_SETUP_INSTANCE_ID(input);
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
-	float positionWS = TransformObjectToWorld(input.positionOS);
+	float3 positionWS = TransformObjectToWorld(input.positionOS);
 	output.positionCS = TransformWorldToHClip(positionWS);
 
 	float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
@@ -39,7 +39,7 @@ Varyings ShadowCasterPassVertex(Attributes input)
 	return output;
 }
 
-void ShadowCasterPassFragment(Varyings input) : SV_TARGET
+void ShadowCasterPassFragment(Varyings input)
 {
 	UNITY_SETUP_INSTANCE_ID(input);
 	float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);

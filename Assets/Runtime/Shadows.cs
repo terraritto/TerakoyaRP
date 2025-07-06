@@ -1,12 +1,13 @@
 using Palmmedia.ReportGenerator.Core;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Rendering;
 
 public class Shadows
 {
     // 最大のDirectional Light数
-    const int maxShadowedDirectionalLightCount = 1;
+    const int maxShadowedDirectionalLightCount = 4;
 
     // 影のために使うdirectional Lightの構造体
     struct ShadowedDirectionalLight
@@ -37,7 +38,15 @@ public class Shadows
     int shadowedDirectionalLightCount;
 
     // DirectionalLightのShadowのAtlasのID
-    static int directionalShadowAtlasId = Shader.PropertyToID("_DirectionalShadowAtlas");
+    static int directionalShadowAtlasId = 
+        Shader.PropertyToID("_DirectionalShadowAtlas");
+
+    // DirectionalLightのShadowのMatrixのID
+    static int directionalShadowMatrixId = 
+        Shader.PropertyToID("_DirectionalShadowMatrices");
+    // Shadow用のViewProj Matrix
+    static Matrix4x4[] directionalShadowMatrices = 
+        new Matrix4x4[maxShadowedDirectionalLightCount];
 
     public void Setup(
         ScriptableRenderContext context,
@@ -50,7 +59,7 @@ public class Shadows
         this.shadowedDirectionalLightCount = 0;
     }
 
-    public void ReserveDirectionalShadows(
+    public Vector2 ReserveDirectionalShadows(
         Light light,
         int visibleLightIndex
         )
@@ -58,29 +67,34 @@ public class Shadows
         // Shadow対象でない
         if (light.shadows == LightShadows.None)
         {
-            return;
+            return Vector2.zero;
         }
 
         // Shadowの強度が0以下の場合は出ない
         if (light.shadowStrength <= 0f)
         {
-            return;
+            return Vector2.zero;
         }
 
         // Right範囲にShadowCasterがいないならスキップする
         if (cullingResults.GetShadowCasterBounds(visibleLightIndex, out Bounds b) == false)
         {
-            return;
+            return Vector2.zero;
         }
 
         if (shadowedDirectionalLightCount < maxShadowedDirectionalLightCount)
         {
-            shadowedDirectionalLights[shadowedDirectionalLightCount++] =
+            shadowedDirectionalLights[shadowedDirectionalLightCount] =
                 new ShadowedDirectionalLight
                 {
                     visibleLightIndex = visibleLightIndex
                 };
+
+            return new Vector2(
+                light.shadowStrength, shadowedDirectionalLightCount++);
         }
+
+        return Vector2.zero;
     }
 
     public void Render()
@@ -117,16 +131,25 @@ public class Shadows
         buffer.BeginSample(bufferName);
         ExecuteBuffer();
 
+        int split = shadowedDirectionalLightCount <= 1 ? 1 : 2;
+        int tileSize = atlasSize / split;
+
         for (int i = 0; i < shadowedDirectionalLightCount; i++)
         {
-            RenderDirectionalShadows(i, atlasSize);
+            RenderDirectionalShadows(i, split, tileSize);
         }
+
+        // MatrixをGPUに送信
+        buffer.SetGlobalMatrixArray(
+            nameID: directionalShadowMatrixId, 
+            values: directionalShadowMatrices
+            );
 
         buffer.EndSample(bufferName);
         ExecuteBuffer();
     }
 
-    private void RenderDirectionalShadows(int index, int tileSize)
+    private void RenderDirectionalShadows(int index, int split, int tileSize)
     {
         ShadowedDirectionalLight light = shadowedDirectionalLights[index];
         
@@ -150,11 +173,53 @@ public class Shadows
 
         // 取得した情報を設定
         shadowSettings.splitData = splitData;
+        directionalShadowMatrices[index] =
+            ConvertToAtlasMatrix(
+            m: projectionMatrix * viewMatrix,
+            offset: SetTileViewport(index, split, tileSize),
+            split: split
+            ); // Matrixを用意
         buffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 
         // 実行
         ExecuteBuffer();
         context.DrawShadows(ref shadowSettings);
+    }
+
+    private Vector2 SetTileViewport(int index, int split, float tileSize)
+    {
+        // x->0,1,0,1 y->0,0,1,1のように描画位置を変える
+        Vector2 offset = new Vector2(index % split, index / split);
+        buffer.SetViewport(new Rect(
+            offset.x * tileSize, offset.y * tileSize, tileSize, tileSize
+            ));
+
+        return offset;
+    }
+
+    private Matrix4x4 ConvertToAtlasMatrix(Matrix4x4 m, Vector2 offset, int split)
+    {
+        if (SystemInfo.usesReversedZBuffer)
+        {
+            m.m20 = -m.m20;
+            m.m21 = -m.m21;
+            m.m22 = -m.m22;
+            m.m23 = -m.m23;
+        }
+        float scale = 1f / split;
+        m.m00 = (0.5f * (m.m00 + m.m30) + offset.x * m.m30) * scale;
+        m.m01 = (0.5f * (m.m01 + m.m31) + offset.x * m.m31) * scale;
+        m.m02 = (0.5f * (m.m02 + m.m32) + offset.x * m.m32) * scale;
+        m.m03 = (0.5f * (m.m03 + m.m33) + offset.x * m.m33) * scale;
+        m.m10 = (0.5f * (m.m10 + m.m30) + offset.y * m.m30) * scale;
+        m.m11 = (0.5f * (m.m11 + m.m31) + offset.y * m.m31) * scale;
+        m.m12 = (0.5f * (m.m12 + m.m32) + offset.y * m.m32) * scale;
+        m.m13 = (0.5f * (m.m13 + m.m33) + offset.y * m.m33) * scale;
+        m.m20 = 0.5f * (m.m20 + m.m30);
+        m.m21 = 0.5f * (m.m21 + m.m31);
+        m.m22 = 0.5f * (m.m22 + m.m32);
+        m.m23 = 0.5f * (m.m23 + m.m33);
+        return m;
     }
 
     public void Cleanup()

@@ -50,7 +50,7 @@ Shader "Terakoya RP/Lit"
             #pragma multi_compile_instancing
             #pragma vertex ShadowCasterPassVertex
             #pragma fragment ShadowCasterPassFragment
-            #include "LitPass.hlsl"
+            #include "ShadowCasterPass.hlsl"
             ENDHLSL
         }
     }
